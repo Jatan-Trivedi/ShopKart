@@ -1,27 +1,24 @@
-const jwt = require('jsonwebtoken');
-const Customer = require('../models/customer.model');
+import jwt from 'jsonwebtoken';
+import Customer from '../models/customer.model.js';
 
-const protect = async (req, res, next) => {
-  const token = req.cookies.jwt;
+export const protect = async (req, res, next) => {
+  try {
+    const token = req.cookies.jwt;
 
-  if (token) {
-    try {
-
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      req.customer = await Customer.findById(decoded.id).select('-password');
-
-      if (!req.customer) {
-        return res.status(401).json({ message: 'Not authorized, user not found' });
-      }
-
-      next();
-    } catch (error) {
-      return res.status(401).json({ message: 'Not authorized, token failed' });
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
-  } else {
-    return res.status(401).json({ message: 'Not authorized, no token provided' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const customer = await Customer.findById(decoded.id).select('-password');
+
+    if (!customer) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Customer not found' });
+    }
+
+    req.user = customer;
+    next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: 'Unauthorized: Invalid token' });
   }
 };
-
-module.exports = { protect };
